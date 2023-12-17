@@ -61,6 +61,11 @@ x-airflow-common:
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth'
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+    GREEN_TAXI_PG_HOST: green_taxi-pgsql
+    GREEN_TAXI_PG_USER: green_taxi_dbuser
+    GREEN_TAXI_PG_PASSWORD: green_taxi_dbpass
+    GREEN_TAXI_PG_DB: green_taxi_db
+    GOOGLE_API_KEY: AIzaSyC61Q45RfGW7QAPlX-E_Gn-VtcvBV553VU
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
@@ -73,7 +78,7 @@ x-airflow-common:
     &airflow-common-depends-on
     airflow-pgsql:
       condition: service_healthy
-    titanic-pgsql:
+    green_taxi-pgsql:
       condition: service_healthy
 
 services:
@@ -91,16 +96,16 @@ services:
       retries: 5
     restart: always
 
-  titanic-pgsql:
+  green_taxi-pgsql:
     image: postgres:13
     environment:
-      POSTGRES_USER: titanic_dbuser
-      POSTGRES_PASSWORD: titanic_dbpass
-      POSTGRES_DB: titanic_db
+      POSTGRES_USER: green_taxi_dbuser
+      POSTGRES_PASSWORD: green_taxi_dbpass
+      POSTGRES_DB: green_taxi_db
     volumes:
-      - titanic-pgsql-db-volume:/var/lib/postgresql/data
+      - green_taxi-pgsql-db-volume:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "titanic_dbuser"]
+      test: ["CMD", "pg_isready", "-U", "green_taxi_dbuser"]
       interval: 5s
       retries: 5
     restart: always
@@ -223,6 +228,9 @@ services:
     user: "0:0"
     volumes:
       - .:/sources
+    ports:
+      - 8002:8050
+      
 
   airflow-cli:
     <<: *airflow-common
@@ -236,11 +244,13 @@ services:
       - bash
       - -c
       - airflow
+    ports:
+      - 8003:8050
 
   # You can enable flower by adding "--profile flower" option e.g. docker-compose --profile flower up
   # or by explicitly targeted on the command line e.g. docker-compose up flower.
   # See: https://docs.docker.com/compose/profiles/
 volumes:
   airflow-pgsql-db-volume:
-  titanic-pgsql-db-volume:
+  green_taxi-pgsql-db-volume:
   pg-admin-data:
