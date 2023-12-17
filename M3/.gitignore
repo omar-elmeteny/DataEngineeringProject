@@ -1,0 +1,4 @@
+.Trash-0/
+.ipynb_checkpoints/
+lookup_table_yellow_taxis.csv/
+*.parquet

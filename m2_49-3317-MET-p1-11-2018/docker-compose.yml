@@ -1,0 +1,58 @@
+version: '3'
+services:
+  python-service:
+    build:
+      context: .
+    volumes:
+      - ./data:/data
+      - ./app:/app
+    environment:
+      GOOGLE_API_KEY: AIzaSyC61Q45RfGW7QAPlX-E_Gn-VtcvBV553VU
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: very_secret_passowrd_123
+      POSTGRES_DB: trip_data_db
+    networks:
+      - data-engineering
+    depends_on:
+      db-service:
+        condition: service_healthy
+    command: ["python", "/app/main.py"]
+  db-service:
+    image: postgres:13
+    environment:
+      PGUSER: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: very_secret_passowrd_123
+      POSTGRES_DB: trip_data_db
+    volumes:
+      - ./green_taxi_11_2018_postgres:/var/lib/postgresql/data
+      - ./m2_queries:/var/lib/m2_queries
+    ports:
+      - "5432:5432"
+    networks:
+      - data-engineering
+    healthcheck:
+      # https://stackoverflow.com/questions/65115627/safe-ways-to-specify-postgres-parameters-for-healthchecks-in-docker-compose
+      test: ["CMD-SHELL", "pg_isready", "-d", "db_prod"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 8s
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: omar.elmeteny@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: 1234
+    ports:
+      - "8080:80"
+    depends_on:
+      db-service:
+          condition: service_healthy
+    networks:
+      - data-engineering
+    volumes:
+      - ./pgadmin-data:/var/lib/pgadmin
+networks:
+  data-engineering:
+    driver: bridge
+

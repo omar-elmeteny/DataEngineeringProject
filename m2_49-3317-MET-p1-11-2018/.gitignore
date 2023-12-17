@@ -1,0 +1,5 @@
+/pgadmin-data/*
+/green_taxi_11_2018_postgres/*
+/data/*
+!/data/green_tripdata_2018-11.csv
+/app/__pycache__/*
