@@ -13,6 +13,9 @@ import dash_core_components as dcc
 import dash_html_components as html
 
 def extract_clean(data_file_name, cleaned_file_name, lookup_file_name):
+    if os.path.exists(cleaned_file_name):
+        print("Cleaned file already exists. Skipping cleaning...", flush=True)
+        return
     print("Running cleanup...", flush=True)
     trip_df_original = m1.load_data(data_file_name)
     print("Loaded original trip data...", flush=True)
@@ -92,6 +95,9 @@ def extract_clean(data_file_name, cleaned_file_name, lookup_file_name):
     print(f"saved lookup table to {lookup_file_name}...", flush=True)
 
 def add_gps_locations(cleaned_file_name, transformed_file_name, locations_file_name):
+    if os.path.exists(transformed_file_name):
+        print("Transformed file already exists. Skipping transformation...", flush=True)
+        return
     locations_dict = m1.load_coordinates(locations_file_name)
     print("loaded coordinates...", flush=True)
     trip_df = m1.load_data(cleaned_file_name)
@@ -125,26 +131,141 @@ def load_to_postgres(filename, table_name):
 
 def create_dashboard(filename):
     df = pd.read_csv(filename)
+
+    # Group by pickup and dropoff locations and count the number of rows
+    route_counts = df.groupby(['pu_location', 'do_location']).size().reset_index(name='trip_count')
+
+    # Sort by trip count and limit to top 10
+    top_10_routes = route_counts.sort_values('trip_count', ascending=False).head(10)
+    # Create 'route' column
+    top_10_routes['route'] = top_10_routes.apply(lambda row: f"{row['pu_location']} to {row['do_location']}", axis=1)
+    
+    average_tip = df.groupby('passenger_count')['tip_amount'].mean().reset_index(name='average_tip')
+    average_fare = df.groupby('passenger_count')['total_amount'].mean().reset_index(name='average_fare')
+
+    # Convert 'date' column to datetime format
+    df['lpep_pickup_datetime'] = pd.to_datetime(df['lpep_pickup_datetime'])
+
+    # Extract day of the week
+    df['day_of_week'] = df['lpep_pickup_datetime'].dt.day_name()
+
+    # Group by day of the week and count the number of rows
+    day_of_week_counts = df.groupby('day_of_week').size().reset_index(name='trip_count')
+
+    # Create 'day_type' column
+    df['day_type'] = df['day_of_week'].apply(lambda x: 'Weekend' if x in ['Saturday', 'Sunday'] else 'Weekday')
+
+    # Group by 'day_type' and calculate average distance
+    average_distance = df.groupby('day_type')['trip_distance'].mean().reset_index(name='average_distance')
+
     app = dash.Dash()
     app.layout = html.Div(
-    children=[
-        html.H1(children="Green Taxi DataSet",),
-        html.P(
-            children="Trip Distance vs Total Amount Green Taxi dataset",
-        ),
-        dcc.Graph(
-            figure={
-                "data": [
-                    {
-                        "x": df["trip_distance"],
-                        "y": df["total_amount"],
-                        "type": "lines",
-                    },
-                ],
-                "layout": {"title": "Trip Distance vs Total Amount"},
-            },
-        )
-    ]
+        children=[
+            html.H1(
+                children="Green Taxi DataSet",
+                style={"text-align" : "center"},
+            ),
+            html.H2(
+                children="Omar Sherif Elmeteny (MET 49-3317)",
+                style={"text-align" : "center"},
+            ),
+            html.H3(
+                children="Top 10 Routes and their trip counts",
+                style={"text-align" : "center"},
+            ),
+            dcc.Graph(
+                figure={
+                    "data": [
+                        {
+                            "x": top_10_routes['route'],
+                            "y": top_10_routes['trip_count'],
+                            "type": "bar",
+                        },
+                    ],
+                    "layout": {"title": "Route vs Trip Count"},
+                },
+            ),
+            html.H2(
+                children="Omar Sherif Elmeteny (MET 49-3317)",
+                style={"text-align" : "center"},
+            ),
+            html.H3(
+                children="Average Tip Amount by Passenger Count",
+                style={"text-align" : "center"}
+            ),
+            dcc.Graph(
+                figure={
+                    "data": [
+                        {
+                            "x": average_tip['passenger_count'],
+                            "y": average_tip['average_tip'],
+                            "type": "bar",
+                        },
+                    ],
+                    "layout": {"title": "Passenger Count vs Tip Amount"},
+                },
+            ),
+            html.H2(
+                children="Omar Sherif Elmeteny (MET 49-3317)",
+                style={"text-align" : "center"}
+            ),
+            html.H3(
+                children="Total Fare Amount by Passenger Count",
+                style={"text-align" : "center"}
+            ),
+            dcc.Graph(
+                figure={
+                    "data": [
+                        {
+                            "x": average_fare['passenger_count'],
+                            "y": average_fare['average_fare'],
+                            "type": "bar",
+                        },
+                    ],
+                    "layout": {"title": "Passenger Count vs Fare Amount"},
+                },
+            ),
+            html.H2(
+                children="Omar Sherif Elmeteny (MET 49-3317)",
+                style={"text-align" : "center"}
+            ),
+            html.H3(
+                children="Trip Count by Day of the Week",
+                style={"text-align" : "center"}
+            ),
+            dcc.Graph(
+                figure={
+                    "data": [
+                        {
+                            "x": day_of_week_counts['day_of_week'],
+                            "y": day_of_week_counts['trip_count'],
+                            "type": "bar",
+                        },
+                    ],
+                    "layout": {"title": "Day of the Week vs Trip Count"},
+                },
+            ),
+            html.H2(
+                children="Omar Sherif Elmeteny (MET 49-3317)",
+                style={"text-align" : "center"}
+            ),
+            html.H3(
+                children="Average distance travelled by on Weekdays and Weekends",
+                style={"text-align" : "center"}
+            ),
+            dcc.Graph(
+                figure={
+                    "data": [
+                        {
+                            "x": average_distance['day_type'],
+                            "y": average_distance['average_distance'],
+                            "type": "bar",
+                        },
+                    ],
+                    "layout": {"title": "Average Distance vs Day Type"},
+                },
+            ),
+        ]
     )
     app.run_server(host='0.0.0.0')
     print('dashboard is successful and running on port 8000')

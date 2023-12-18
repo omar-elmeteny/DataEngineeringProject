@@ -1,0 +1,8 @@
+logs/
+__pycache__/
+data/green_tripdata_2018-11_clean.csv
+data/green_tripdata_2018-11_transformed.csv
+data/lookup_green_taxi_11_2018.csv
+data/gps_locations.csv
+
+.env

@@ -72,8 +72,6 @@ x-airflow-common:
     - ./plugins:/opt/airflow/plugins
     - ./data:/opt/airflow/data
   user: "${AIRFLOW_UID:-50000}:0"
-  ports:
-    - 8001:8050
   depends_on:
     &airflow-common-depends-on
     airflow-pgsql:
@@ -125,7 +123,6 @@ services:
     command: webserver
     ports:
       - 8080:8080
-      - 8000:8050
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 10s
@@ -150,6 +147,8 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+    ports:
+      - 8000:8050
 
   airflow-init:
     <<: *airflow-common
@@ -228,9 +227,7 @@ services:
     user: "0:0"
     volumes:
       - .:/sources
-    ports:
-      - 8002:8050
-      
+   
 
   airflow-cli:
     <<: *airflow-common
